@@ -4,7 +4,7 @@ This is the backend for the StudyNotion EdTech platform. Built with Node.js, Exp
 
 ## Features
 
-- Industry-level folder structure.
+
 - TypeScript for type safety.
 - Express for routing and middleware.
 - Environment variable configuration.
@@ -73,4 +73,4 @@ backend/
 ├── .gitignore          # Git ignore files
 ├── package.json        # Dependencies and scripts
 └── tsconfig.json       # TypeScript configuration
-```
+
