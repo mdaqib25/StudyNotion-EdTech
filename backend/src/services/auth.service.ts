@@ -1,12 +1,24 @@
 import OTP from "../models/OTP.js";
 import mailSender from "../utils/mailSender.js";
+import bcrypt from "bcryptjs"
+import User from "../models/User.js";
+import Profile from "../models/Profile.js";
 
+interface SignUpPayload {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    accountType: "Admin" | "Student" | "Instructor";
+    contactNumber?: string;
+    otp: string;
+}
 // generate 6 digit otp
 const generateOTP = (): string => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-//Send OTP to user's email
+//Send OTP service
 export const sendOtpService = async (email: string): Promise<void> => {
     // generate otp
     const otp = generateOTP();
@@ -32,3 +44,62 @@ export const sendOtpService = async (email: string): Promise<void> => {
         throw new Error("Failed to send OTP email");
     }
 };
+
+
+// Sign Up Service
+export const signUpService = async ({
+    firstName,
+    lastName,
+    email,
+    password,
+    accountType,
+    contactNumber,
+    otp,
+}: SignUpPayload) => {
+
+    // check user existing 
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+        throw new Error("user already registered")
+    }
+    // get latest otp
+    const recentOtp = await OTP.findOne({ email }).sort({ createdAt: -1 });
+    if (!recentOtp) {
+        throw new Error("Invalid Otp")
+    }
+    // validate otp 
+    if (recentOtp.otp !== otp) {
+        throw new Error("Invalid OTP");
+    }
+    // hash password 
+    const hashedPassword = await bcrypt.hash(password, 10);
+    // create profile 
+    const profile = await Profile.create({
+        gender: null,
+        dateOfBirth: null,
+        about: null,
+        contactNumber: contactNumber || null,
+    })
+    // create user
+    const user = await User.create({
+        firstName,
+        lastName,
+        email,
+        password: hashedPassword,
+        accountType,
+        additionalDetails: profile._id,
+        isVerified: true,
+        image: `https://api.dicebear.com/5.x/initials/svg?seed=${firstName} ${lastName}`,
+    })
+    // cleanup otp
+    await OTP.deleteMany({ email });
+    // return user 
+    return user;
+};
+
+
+
+
+
+
+
