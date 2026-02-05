@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { sendOtpService, signUpService } from "../services/auth.service.js";
+import { sendOtpService, signUpService, loginService } from "../services/auth.service.js";
 
 // send OTP
 export const sendOTP = async (req: Request, res: Response) => {
@@ -72,13 +72,44 @@ export const signUp = async (req: Request, res: Response) => {
     }
 };
 
-
-
-
-
-
 // Login
+export const login = async (req: Request, res: Response) => {
+    try {
+        // get data from
+        const { email, password } = req.body;
+        // validate data
+        if (!email || !password) {
+            res.status(400).json({
+                success: false,
+                message: "All fields are required"
+            })
+        }
+        // call LoginService
+        const { user, token } = await loginService(email, password)
 
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
+        })
+        // send response
+        return res.status(200).json({
+            success: true,
+            message: "Logged in successfully",
+            token,
+            user,
+        });
+
+    } catch (error: any) {
+        console.error("Login Error:", error.message);
+
+        return res.status(401).json({
+            success: false,
+            message: error.message || "Login Failed",
+        })
+    }
+};
 
 
 // changePassword

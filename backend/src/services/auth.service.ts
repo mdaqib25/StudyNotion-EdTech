@@ -1,6 +1,7 @@
 import OTP from "../models/OTP.js";
 import mailSender from "../utils/mailSender.js";
 import bcrypt from "bcryptjs"
+import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import Profile from "../models/Profile.js";
 
@@ -44,7 +45,6 @@ export const sendOtpService = async (email: string): Promise<void> => {
         throw new Error("Failed to send OTP email");
     }
 };
-
 
 // Sign Up Service
 export const signUpService = async ({
@@ -96,6 +96,47 @@ export const signUpService = async ({
     // return user 
     return user;
 };
+
+// Login Service 
+export const loginService = async (email: string, password: string) => {
+    // find user
+    const user = await User.findOne({ email })
+        .populate("additionalDetails")
+        .select("+password");
+
+    if (!user) {
+        throw Error("User not registered");
+    }
+    // check email verification
+    if (!user.isVerified) {
+        throw new Error("Email not verified");
+    }
+    // compare password
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+        throw new Error("Invalid Password");
+    }
+    // generate JWT
+    const token = jwt.sign(
+        {
+            id: user._id,
+            email: user.email,
+            accountType: user.accountType,
+        },
+        process.env.JWT_SECRET as string,
+        {
+            expiresIn: "2h",
+        }
+    )
+    // remove sensitive fields return safe payLoad
+    const { password: _, ...safeUser } = user.toObject();
+
+    return {
+        user: safeUser,
+        token,
+    };
+};
+
 
 
 
